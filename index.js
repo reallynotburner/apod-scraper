@@ -11,7 +11,6 @@ const sqlConfig = {
   host: mySqlEndpoint,
   user: mySqlUser,
   password: mySqlPassword,
-  database: mySqlDatabaseName
 };
 const apiKey = process.env.NASA_API_KEY;
 
@@ -27,8 +26,11 @@ async function scrapeApod(apiKey, offset = 1) {
   let cursorYear, cursorMonth, cursorDay;
 
   const con = await sqlConnectPromise(sqlConfig);
-  if (!con) throw 'Bad MySQL Connection';
-  
+  if (!con) throw 'Bad MySQL Connection!';
+
+  const isGoodDataBase = await createDatabaseIfDoesntExist(con, mySqlDatabaseName);
+  if (!isGoodDataBase) throw 'Bad MySQL Database!';
+
   const recentDateSql = `SELECT DATE_FORMAT(date,\'%Y-%m-%d\') date from ${mySqlTableName} ORDER by id DESC LIMIT 1`;
   const recentDateResult = await sqlQueryPromise(con, recentDateSql);
 
@@ -119,7 +121,6 @@ async function scrapeApod(apiKey, offset = 1) {
       con.end();
     }
   }
-  
 }
 
 function sqlConnectPromise(config) {
@@ -156,36 +157,33 @@ async function sqlQueryPromise(con, sql) {
   
 }
 
+const createTableSql = `CREATE TABLE ${mySqlTableName} (
+  id SMALLINT NOT NULL AUTO_INCREMENT,
+  date date,
+  title varchar(128),
+  media_type varchar(64),
+  url varchar(255),
+  hdurl varchar(255),
+  explanation varchar(2048),
+  copyright varchar(64),
+  PRIMARY KEY (id)
+);`
+
+async function createDatabaseIfDoesntExist (con, databaseName) {
+  try {
+    const existingDatabase = await sqlQueryPromise(con, `SHOW DATABASES LIKE '${databaseName}'`);
+    if (existingDatabase.length === 0) {
+      await sqlQueryPromise(con, `CREATE DATABASE ${databaseName}`);
+    }
+    await sqlQueryPromise(con, `USE ${databaseName}`);
+    const existingTable = await sqlQueryPromise(con, `SHOW TABLES LIKE '${mySqlTableName}'`);
+    if (existingTable.length === 0) {
+      await sqlQueryPromise(con, createTableSql);
+    }
+    return con;
+  } catch (e) {
+    return null;
+  }
+}
+
 scrapeApod(apiKey);
-
-
-// Thumbnail Function
-/*
-  Connect to APOD database
-  - check results table:
-  - what is the most recent date with thumbnail created successfully
-  ** complexity here!  Some content is not image, and will not have an
-    obvious source of thumbnail: unless we get really fancy and construct
-    thumbnails from videos.  So good record may not have thumbnail
-    media_type === 'image' because it is a Video.
-  -%%% what is the last date in the APOD database, that is STOP date.
-  - increment date and query APOD history for that date.
-  - if date > stop date, stop.
-  - if media_type === 'image' attempt to download image and get MIME type
-  - construct filename: {basePath to deploy image}/APOD_thumbnail_1995-06-16.{MIME type}
-  - resize according to appropriate algorithm, save and deploy.
-  - update an IN PROGRESS table with the job of input url, output thumbnail url.
-  - FOR NOW: if Video, let's have thumnail point to static image "VideoThumbnail.png"
-    that has a little play button on it to entice clicking"
-    And make a default thumbnail if we don't know what to do with the MIME type.
-  - go to -%%% to repeat.
-
- */
-
- // Thumbnail Cleanup
-/*
- After all that thumbnail stuff.
- We have go to heck THUMBNAIL IN PROGRESS table for all the stuff it's deploying.
- Attempt to download each output thumnail url.  If good, delete the source image
- from the thumbnail working directory.  Remove the row.
-*/
