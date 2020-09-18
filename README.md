@@ -37,4 +37,4 @@ Use mysqlsh or MySql Workbench to start your database management system.
 npm start
 ```
 You can run in when ever, skipping days is no problem as the script will pick up where it left off during the last session.
-It will keep the node session open as long as there are more days to scrape. With my apikey, it takes a few minutes to hit the api the maximum number of times ~2000 hits.  If you are using the DEMO_KEY, the session would take about 8 months to gather the entire data set, as you only get 50 hits a day on that.  In general on error it leaves the session.  There's still some exit conditions that aren't caught so user beware.
+It will keep the node session open as long as there are more days to scrape. With my apikey, it takes a few minutes to hit the api the maximum number of times ~2000 hits and then waits a bit more than an hour before getting more.  If you are using the DEMO_KEY, the session would take about 8 months to gather the entire data set, as you only get 50 hits a day on that.  In general on error it leaves the session.  There's still some exit conditions that aren't caught so user beware.
