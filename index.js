@@ -1,7 +1,9 @@
-var mysql = require('mysql');
 require('dotenv').config();
 const fetch = require('isomorphic-fetch');
-
+const createDbAndTableIfNecessary = require('./utils/createDbAndTableIfNecessary');
+const sqlQueryPromise = require('./utils/sqlQueryPromise');
+const sqlConnectPromise = require('./utils/sqlConnectPromise');
+const checkRemainingRequests = require('./utils/checkRemainingRequests');
 const mySqlEndpoint = process.env.MYSQL_ENDPOINT;
 const mySqlUser = process.env.MYSQL_USER;
 const mySqlPassword = process.env.MYSQL_PASSWORD;
@@ -15,7 +17,6 @@ const sqlConfig = {
 const apiKey = process.env.NASA_API_KEY;
 
 async function scrapeApod(apiKey, offset = 1) {
-  let apiRequestsRemaining = 2000; // default daily quota, updated from server
   let errored = false;
   const cursorDate = new Date();
   const stopDate = new Date();
@@ -28,7 +29,7 @@ async function scrapeApod(apiKey, offset = 1) {
   const con = await sqlConnectPromise(sqlConfig);
   if (!con) throw 'Bad MySQL Connection!';
 
-  const isGoodDataBase = await createDatabaseIfDoesntExist(con, mySqlDatabaseName);
+  const isGoodDataBase = await createDbAndTableIfNecessary(con, mySqlDatabaseName);
   if (!isGoodDataBase) throw 'Bad MySQL Database!';
 
   const recentDateSql = `SELECT DATE_FORMAT(date,\'%Y-%m-%d\') date from ${mySqlTableName} ORDER by id DESC LIMIT 1`;
@@ -68,11 +69,7 @@ async function scrapeApod(apiKey, offset = 1) {
     try {
       fetch("https://api.nasa.gov/planetary/apod?api_key=" +
       `${apiKey}&date=${cursorYear}-${cursorMonth}-${cursorDay}`)
-      .then(r => {
-        apiRequestsRemaining = parseInt(r.headers._headers['x-ratelimit-remaining'][0]);
-        console.log('requests remaining', apiRequestsRemaining);
-        return r;
-      })
+      .then(checkRemainingRequests)
       .then(r => r.json())
       .then(r => {
         if (r.code || r.msg) {
@@ -87,12 +84,9 @@ async function scrapeApod(apiKey, offset = 1) {
           errored = true;
           throw 'Ran out of Rate of Requests!';
         }
-  
-        if (apiRequestsRemaining < 100) { // Give a margin, don't want to get flagged or something
-          errored = true;
-          throw 'Ran out of Number of requests!';
-        }
+
         offset = 1;
+
         const sql = `INSERT INTO ${mySqlTableName} (date, title, media_type, url, hdurl, explanation, copyright) ` +
           `VALUES (${con.escape(r.date)},` +
           ` ${con.escape(r.title && r.title)},` +
@@ -120,69 +114,6 @@ async function scrapeApod(apiKey, offset = 1) {
     } catch (e) {
       con.end();
     }
-  }
-}
-
-function sqlConnectPromise(config) {
-  return new Promise((resolve, reject) => {
-    try {
-      const con = mysql.createConnection(config);
-      con.connect(err => {
-        if (err) {
-          reject(null);
-        } else {
-          resolve(con);
-        }
-      });
-    } catch (e) {
-      reject(null);
-    }
-  });
-}
-
-async function sqlQueryPromise(con, sql) {
-  return new Promise((resolve, reject) => {
-    try {
-      con.query(sql, function (err, result) {
-        if (err) {
-          reject(null);
-        } else {
-          resolve(result);
-        }
-      });
-    } catch (e) {
-      reject(null);
-    }
-  });
-  
-}
-
-const createTableSql = `CREATE TABLE ${mySqlTableName} (
-  id SMALLINT NOT NULL AUTO_INCREMENT,
-  date date,
-  title varchar(128),
-  media_type varchar(64),
-  url varchar(255),
-  hdurl varchar(255),
-  explanation varchar(2048),
-  copyright varchar(64),
-  PRIMARY KEY (id)
-);`
-
-async function createDatabaseIfDoesntExist (con, databaseName) {
-  try {
-    const existingDatabase = await sqlQueryPromise(con, `SHOW DATABASES LIKE '${databaseName}'`);
-    if (existingDatabase.length === 0) {
-      await sqlQueryPromise(con, `CREATE DATABASE ${databaseName}`);
-    }
-    await sqlQueryPromise(con, `USE ${databaseName}`);
-    const existingTable = await sqlQueryPromise(con, `SHOW TABLES LIKE '${mySqlTableName}'`);
-    if (existingTable.length === 0) {
-      await sqlQueryPromise(con, createTableSql);
-    }
-    return con;
-  } catch (e) {
-    return null;
   }
 }
 
