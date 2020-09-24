@@ -26,25 +26,31 @@ async function scrapeApod(apiKey, offset = 1) {
 
   let cursorYear, cursorMonth, cursorDay;
 
-  const con = await sqlConnectPromise(sqlConfig);
-  if (!con) throw 'Bad MySQL Connection!';
-
-  const isGoodDataBase = await createDbAndTableIfNecessary(con, mySqlDatabaseName);
-  if (!isGoodDataBase) throw 'Bad MySQL Database!';
-
-  const recentDateSql = `SELECT DATE_FORMAT(date,\'%Y-%m-%d\') date from ${mySqlTableName} ORDER by id DESC LIMIT 1`;
-  const recentDateResult = await sqlQueryPromise(con, recentDateSql);
-
-  if (recentDateResult.length > 0) {
-    // this looks weird, but the date object returned is pretty strange,
-    // that's why I'm requesting it be formatted above
-    [ cursorYear, cursorMonth, cursorDay ] = recentDateResult[0].date.split('-').map(r => parseInt(r));
-  } else {
-    // case where there is No items in table, choose the day before first day of data
-    cursorYear = 1995;
-    cursorMonth = 6;
-    cursorDay = 15;
+  try {
+    const con = await sqlConnectPromise(sqlConfig);
+    if (!con) throw 'Bad MySQL Connection!';
+  
+    const isGoodDataBase = await createDbAndTableIfNecessary(con, mySqlDatabaseName);
+    if (!isGoodDataBase) throw 'Bad MySQL Database!';
+  
+    const recentDateSql = `SELECT DATE_FORMAT(date,\'%Y-%m-%d\') date from ${mySqlTableName} ORDER by id DESC LIMIT 1`;
+    const recentDateResult = await sqlQueryPromise(con, recentDateSql);
+  
+    if (recentDateResult.length > 0) {
+      // this looks weird, but the date object returned is pretty strange,
+      // that's why I'm requesting it be formatted above
+      [ cursorYear, cursorMonth, cursorDay ] = recentDateResult[0].date.split('-').map(r => parseInt(r));
+    } else {
+      // case where there is No items in table, choose the day before first day of data
+      cursorYear = 1995;
+      cursorMonth = 6;
+      cursorDay = 15;
+    }
+  } catch (e) {
+    console.error('Failed to setup Database Connection', e);
+    return;
   }
+  
 
   cursorDate.setFullYear(cursorYear);
   cursorDate.setMonth(cursorMonth);
