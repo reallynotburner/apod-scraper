@@ -8,7 +8,7 @@ const createTable = `CREATE TABLE IF NOT EXISTS ${mySqlTableName} (
   media_type varchar(64),
   url varchar(255),
   hdurl varchar(255),
-  explanation varchar(2048),
+  explanation longtext CHARACTER SET utf8mb4,
   copyright varchar(64),
   thumbnailUrl VARCHAR(255),
   PRIMARY KEY (id)
@@ -24,8 +24,9 @@ const noop = `SELECT * from ${mySqlTableName} WHERE false`;
 const insertNewApodRecord = function (con, record) {
   try {
     const sql = `INSERT INTO ${mySqlTableName} (date, title, media_type, url, hdurl, explanation, copyright) ` +
-    `VALUES (${con.escape(record.date)},` +
-    ` ${con.escape(record.title && record.title)},` +
+    `VALUES (` +
+    `  ${con.escape(record.date)},` +
+    `  ${con.escape(record.title && record.title)},` +
     `  ${con.escape(record.media_type && record.media_type)},` +
     `  ${con.escape(record.url && record.url)},` +
     `  ${con.escape(record.hdurl && record.hdurl)},` +
