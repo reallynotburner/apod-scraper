@@ -26,31 +26,34 @@ async function scrapeApod(apiKey, offset = 1) {
 
   let cursorYear, cursorMonth, cursorDay;
 
-  try {
-    const con = await sqlConnectPromise(sqlConfig);
-    if (!con) throw 'Bad MySQL Connection!';
-  
-    const isGoodDataBase = await createDbAndTableIfNecessary(con, mySqlDatabaseName);
-    if (!isGoodDataBase) throw 'Bad MySQL Database!';
-  
-    const recentDateSql = `SELECT DATE_FORMAT(date,\'%Y-%m-%d\') date from ${mySqlTableName} ORDER by id DESC LIMIT 1`;
-    const recentDateResult = await sqlQueryPromise(con, recentDateSql);
-  
-    if (recentDateResult.length > 0) {
-      // this looks weird, but the date object returned is pretty strange,
-      // that's why I'm requesting it be formatted above
-      [ cursorYear, cursorMonth, cursorDay ] = recentDateResult[0].date.split('-').map(r => parseInt(r));
-    } else {
-      // case where there is No items in table, choose the day before first day of data
-      cursorYear = 1995;
-      cursorMonth = 6;
-      cursorDay = 15;
-    }
-  } catch (e) {
-    console.error('Failed to setup Database Connection', e);
-    return;
+  const con = await sqlConnectPromise(sqlConfig).catch(e => {
+    errored = true;
+  })
+
+  if (errored || !con) {
+    console.error('bad con!', con)
+    throw 'Bad MySQL Connection!';
+  } else {
+    console.log('good con?', con)
   }
-  
+
+  const isGoodDataBase = await createDbAndTableIfNecessary(con, mySqlDatabaseName);
+  if (!isGoodDataBase) throw 'Bad MySQL Database!';
+
+  const recentDateSql = `SELECT DATE_FORMAT(date,\'%Y-%m-%d\') date from ${mySqlTableName} ORDER by id DESC LIMIT 1`;
+  const recentDateResult = await sqlQueryPromise(con, recentDateSql);
+
+  if (recentDateResult.length > 0) {
+    // this looks weird, but the date object returned is pretty strange,
+    // that's why I'm requesting it be formatted above
+    [cursorYear, cursorMonth, cursorDay] = recentDateResult[0].date.split('-').map(r => parseInt(r));
+  } else {
+    // case where there is No items in table, choose the day before first day of data
+    cursorYear = 1995;
+    cursorMonth = 6;
+    cursorDay = 15;
+  }
+
 
   cursorDate.setFullYear(cursorYear);
   cursorDate.setMonth(cursorMonth);
@@ -74,53 +77,55 @@ async function scrapeApod(apiKey, offset = 1) {
   } else {
     try {
       fetch("https://api.nasa.gov/planetary/apod?api_key=" +
-      `${apiKey}&date=${cursorYear}-${cursorMonth}-${cursorDay}`)
-      .then(checkRemainingRequests)
-      .then(r => r.json())
-      .then(r => {
-        if (r.code || r.msg) {
-          // TODO: get a better way to alternatively NOT call
-          // the sql.  Probably a good case for async/await pattern here.
-          offset = offset + 1;
-          return `SELECT * from ${mySqlTableName} LIMIT 0`;
-        } else if (
-          r.hasOwnProperty('error') &&
-          r.error.code === 'OVER_RATE_LIMIT'
-        ) {
-          errored = true;
-          throw 'Ran out of Rate of Requests!';
-        }
+        `${apiKey}&date=${cursorYear}-${cursorMonth}-${cursorDay}`)
+        .then(checkRemainingRequests)
+        .then(r => r.json())
+        .then(r => {
+          if (r.code || r.msg) {
+            // TODO: get a better way to alternatively NOT call
+            // the sql.  Probably a good case for async/await pattern here.
+            offset = offset + 1;
+            return `SELECT * from ${mySqlTableName} LIMIT 0`;
+          } else if (
+            r.hasOwnProperty('error') &&
+            r.error.code === 'OVER_RATE_LIMIT'
+          ) {
+            errored = true;
+            throw 'Ran out of Rate of Requests!';
+          }
 
-        offset = 1;
+          offset = 1;
 
-        const sql = `INSERT INTO ${mySqlTableName} (date, title, media_type, url, hdurl, explanation, copyright) ` +
-          `VALUES (${con.escape(r.date)},` +
-          ` ${con.escape(r.title && r.title)},` +
-          `  ${con.escape(r.media_type && r.media_type)},` +
-          `  ${con.escape(r.url && r.url)},` +
-          `  ${con.escape(r.hdurl && r.hdurl)},` +
-          `  ${con.escape(r.explanation && r.explanation.substr(0, 2047))},` +
-          `  ${con.escape(r.copyright && r.copyright.substr(0, 63))})`;
-        return sql;
-      })
-      .then(sql => sqlQueryPromise(con, sql))
-      .then(() => {
-        if (!errored) {
-          scrapeApod(apiKey, offset);
-        } else { // try in an hour
-          console.log('will try again in an hour+');
-          setTimeout(() => {
+          const sql = `INSERT INTO ${mySqlTableName} (date, title, media_type, url, hdurl, explanation, copyright) ` +
+            `VALUES (${con.escape(r.date)},` +
+            ` ${con.escape(r.title && r.title)},` +
+            `  ${con.escape(r.media_type && r.media_type)},` +
+            `  ${con.escape(r.url && r.url)},` +
+            `  ${con.escape(r.hdurl && r.hdurl)},` +
+            `  ${con.escape(r.explanation && r.explanation.substr(0, 2047))},` +
+            `  ${con.escape(r.copyright && r.copyright.substr(0, 63))})`;
+          return sql;
+        })
+        .then(sql => sqlQueryPromise(con, sql))
+        .then(() => {
+          if (!errored) {
             scrapeApod(apiKey, offset);
-          }, 4000000);
-        }
-      })
-      .catch(e => console.error('ERROR', e))
-      .finally(() => con.end());
+          } else { // try in an hour
+            console.log('will try again in an hour+');
+            setTimeout(() => {
+              scrapeApod(apiKey, offset);
+            }, 4000000);
+          }
+        })
+        .catch(e => console.error('ERROR', e))
+        .finally(() => con.end());
 
     } catch (e) {
+    } finally {
       con.end();
     }
   }
 }
 
-scrapeApod(apiKey);
+scrapeApod(apiKey)
+.catch(e => console.error('general catch', e))
