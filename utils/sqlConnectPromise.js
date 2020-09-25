@@ -5,17 +5,18 @@ module.exports = function sqlConnectPromise(config) {
     try {
       const con = mysql.createConnection(config);
       if (!con) {
-        reject(null);
+        reject('sqlConnectPromise con undefined');
       }
       con.connect(err => {
         if (err) {
-          reject(null);
+          console.error('sqlConnectPromise con error', err);
+          reject('sqlConnectPromise con error in callback');
         } else {
           resolve(con);
         }
       });
     } catch (e) {
-      reject(null);
+      reject('sqlConnectPromise con catch');
     }
   });
 }

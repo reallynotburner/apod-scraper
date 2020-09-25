@@ -4,6 +4,7 @@ const createDbAndTableIfNecessary = require('./utils/createDbAndTableIfNecessary
 const sqlQueryPromise = require('./utils/sqlQueryPromise');
 const sqlConnectPromise = require('./utils/sqlConnectPromise');
 const checkRemainingRequests = require('./utils/checkRemainingRequests');
+const sqlStatements = require('./utils/sqlStatements');
 const mySqlEndpoint = process.env.MYSQL_ENDPOINT;
 const mySqlUser = process.env.MYSQL_USER;
 const mySqlPassword = process.env.MYSQL_PASSWORD;
@@ -34,11 +35,10 @@ async function scrapeApod(apiKey, offset = 1) {
     throw 'Bad MySQL Connection!';
   }
 
-  const isGoodDataBase = await createDbAndTableIfNecessary(con, mySqlDatabaseName);
+  const isGoodDataBase = await createDbAndTableIfNecessary(con);
   if (!isGoodDataBase) throw 'Bad MySQL Database!';
 
-  const recentDateSql = `SELECT DATE_FORMAT(date,\'%Y-%m-%d\') date from ${mySqlTableName} ORDER by id DESC LIMIT 1`;
-  const recentDateResult = await sqlQueryPromise(con, recentDateSql);
+  const recentDateResult = await sqlQueryPromise(con, sqlStatements.getLatestRecord);
 
   if (recentDateResult.length > 0) {
     // this looks weird, but the date object returned is pretty strange,
@@ -85,7 +85,7 @@ async function scrapeApod(apiKey, offset = 1) {
             // TODO: get a better way to alternatively NOT call
             // the sql.  Probably a good case for async/await pattern here.
             offset = offset + 1;
-            return `SELECT * from ${mySqlTableName} LIMIT 0`;
+            return sqlStatements.noop;
           } else if (
             r.hasOwnProperty('error') &&
             r.error.code === 'OVER_RATE_LIMIT'
@@ -96,15 +96,7 @@ async function scrapeApod(apiKey, offset = 1) {
 
           offset = 1;
 
-          const sql = `INSERT INTO ${mySqlTableName} (date, title, media_type, url, hdurl, explanation, copyright) ` +
-            `VALUES (${con.escape(r.date)},` +
-            ` ${con.escape(r.title && r.title)},` +
-            `  ${con.escape(r.media_type && r.media_type)},` +
-            `  ${con.escape(r.url && r.url)},` +
-            `  ${con.escape(r.hdurl && r.hdurl)},` +
-            `  ${con.escape(r.explanation && r.explanation.substr(0, 2047))},` +
-            `  ${con.escape(r.copyright && r.copyright.substr(0, 63))})`;
-          return sql;
+          return sqlStatements.insertNewApodRecord(con, r);
         })
         .then(sql => sqlQueryPromise(con, sql))
         .then(() => {
