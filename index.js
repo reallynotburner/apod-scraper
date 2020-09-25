@@ -31,10 +31,7 @@ async function scrapeApod(apiKey, offset = 1) {
   })
 
   if (errored || !con) {
-    console.error('bad con!', con)
     throw 'Bad MySQL Connection!';
-  } else {
-    console.log('good con?', con)
   }
 
   const isGoodDataBase = await createDbAndTableIfNecessary(con, mySqlDatabaseName);
@@ -72,8 +69,11 @@ async function scrapeApod(apiKey, offset = 1) {
     cursorYear === stopYear && cursorMonth === stopMonth && cursorDay > stopDay
   ) {
     // this is where a timed job would be nice, to kick off 
-    console.log('cursor date is greater than current date');
+    console.log('scrapeApod; all caught up with API, will try again in 24 hours');
     con.end();
+    setTimeout(() => {
+      scrapeApod(apiKey);
+    }, 60 * 60 * 24 * 1000);
   } else {
     try {
       fetch("https://api.nasa.gov/planetary/apod?api_key=" +
@@ -111,21 +111,24 @@ async function scrapeApod(apiKey, offset = 1) {
           if (!errored) {
             scrapeApod(apiKey, offset);
           } else { // try in an hour
-            console.log('will try again in an hour+');
+            console.log('scrapeApod; Rate Limit maxxed out. Will try again in an hour-ish');
             setTimeout(() => {
               scrapeApod(apiKey, offset);
             }, 4000000);
           }
         })
-        .catch(e => console.error('ERROR', e))
-        .finally(() => con.end());
-
+        .catch(e => console.error('scrapeApod; error during update of database during promise chain'));
     } catch (e) {
-    } finally {
+      console.error('scrapeApod; error during update of database');
       con.end();
     }
   }
 }
 
 scrapeApod(apiKey)
-.catch(e => console.error('general catch', e))
+.catch(e => {
+  console.error('scrapeApod; General Error will try again in four hours');
+  setTimeout(() => {
+    scrapeApod(apiKey, offset);
+  }, 60 * 60 * 4 * 1000);
+});

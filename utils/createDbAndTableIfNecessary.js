@@ -9,6 +9,7 @@ const createTableSql = `CREATE TABLE ${mySqlTableName} (
   hdurl varchar(255),
   explanation varchar(2048),
   copyright varchar(64),
+  thumbnailUrl VARCHAR(255),
   PRIMARY KEY (id)
 );`
 
