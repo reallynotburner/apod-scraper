@@ -117,10 +117,29 @@ async function scrapeApod(apiKey, offset = 1) {
   }
 }
 
-scrapeApod(apiKey)
-.catch(e => {
-  console.error('scrapeApod; General Error will try again in four hours');
-  setTimeout(() => {
-    scrapeApod(apiKey, offset);
-  }, 60 * 60 * 4 * 1000);
-});
+async function testConnection() {
+  const con = await sqlConnectPromise(sqlConfig)
+  .catch(e => {
+    console.error('sqlConnectPromise rejected', e);
+  });
+
+  if (con) {
+    // try reading?
+    const useTable = await sqlQueryPromise(con, `USE ${mySqlDatabaseName}`)
+    .catch(e => {
+      console.error('sqlQueryPromise useTable rejected', e);
+    });
+
+    const result = await sqlQueryPromise(con, `SELECT date FROM ${mySqlTableName} ORDER BY id DESC LIMIT 10`)
+    .then(r => {
+      console.log('result is r', r);
+    })
+    .catch(e => {
+      console.error('sqlQueryPromise rejected', e);
+    });
+  }
+
+  con && con.end();
+}
+
+testConnection();

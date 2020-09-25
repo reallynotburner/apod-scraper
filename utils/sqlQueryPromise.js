@@ -3,12 +3,14 @@ module.exports = async function sqlQueryPromise(con, sql) {
     try {
       con.query(sql, function (err, result) {
         if (err) {
+          console.error('sqlQueryPromise err in callback', err);
           reject(null);
         } else {
           resolve(result);
         }
       });
     } catch (e) {
+      console.error('sqlQueryPromise catch in callback', e);
       reject(null);
     }
   });
