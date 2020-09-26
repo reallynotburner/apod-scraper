@@ -8,8 +8,6 @@ const sqlStatements = require('./utils/sqlStatements');
 const mySqlEndpoint = process.env.MYSQL_ENDPOINT;
 const mySqlUser = process.env.MYSQL_USER;
 const mySqlPassword = process.env.MYSQL_PASSWORD;
-const mySqlDatabaseName = process.env.MYSQL_DATABASE;
-const mySqlTableName = process.env.MYSQL_TABLE;
 const sqlConfig = {
   host: mySqlEndpoint,
   user: mySqlUser,

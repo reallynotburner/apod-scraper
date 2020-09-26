@@ -39,6 +39,13 @@ const insertNewApodRecord = function (con, record) {
   }
 }
 
+const recentImageWithoutThumbnails = `SELECT id, url ` +
+  `FROM ApodApiRecords ` + 
+  `WHERE thumbnailUrl IS NULL ` +
+  `AND media_type = 'image' ` +
+  `ORDER BY id DESC ` + 
+  `LIMIT 1;`
+
 module.exports = {
   checkForDatabase,
   checkForTable,
@@ -47,5 +54,6 @@ module.exports = {
   getLatestRecord,
   insertNewApodRecord,
   noop,
+  recentImageWithoutThumbnails,
   useDatabase,
 };
