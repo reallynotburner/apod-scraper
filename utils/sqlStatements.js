@@ -46,6 +46,10 @@ const recentImageWithoutThumbnails = `SELECT id, url ` +
   `ORDER BY id DESC ` + 
   `LIMIT 1;`
 
+function updateThumbnail (id, path) {
+  return `UPDATE ${mySqlTableName} SET thumbnailUrl = '${path}' WHERE id = ${id}`;
+}
+
 module.exports = {
   checkForDatabase,
   checkForTable,
@@ -55,5 +59,6 @@ module.exports = {
   insertNewApodRecord,
   noop,
   recentImageWithoutThumbnails,
+  updateThumbnail,
   useDatabase,
 };

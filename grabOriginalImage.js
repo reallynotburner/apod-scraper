@@ -16,61 +16,121 @@ const sqlConfig = {
 const apiKey = process.env.NASA_API_KEY;
 
 async function grabOriginalImage() {
+  let skip = false;
   const con = await sqlConnectPromise(sqlConfig)
-  .catch(e => {
-    console.error('sqlConnectPromise rejected', e);
-  });
+    .catch(e => {
+      console.error('sqlConnectPromise rejected', e);
+    });
 
-  if (con) {
-    await sqlQueryPromise(con, sqlStatements.useDatabase)
+  if (!con) {
+    throw 'grabOriginalImage No MySQL connection';
+  }
+
+  await sqlQueryPromise(con, sqlStatements.useDatabase)
     .catch(e => {
       console.error('sqlQueryPromise useDatabase rejected', e);
     });
 
-    // try reading?
-    const response = await sqlQueryPromise(con, sqlStatements.recentImageWithoutThumbnails)
+  const response = await sqlQueryPromise(con, sqlStatements.recentImageWithoutThumbnails)
     .catch(e => {
       console.error('sqlQueryPromise useTable rejected', e);
     });
 
-    if (response.length < 1) {
-      console.log('no queries returned!');
-      con.end();
-      return;
-    }
-    
-    const url = response[0].url;
-    const suffix = url.substring(url.lastIndexOf('.'));
-    // make a unique file name based on url
-    const newName = Buffer.from(url).toString('base64') + suffix;
+  con.end();
 
-    console.log('new name', newName);
+  if (response.length < 1) {
+    throw 'no queries returned!';
+  }
 
-    const imageOptions = {
-      url,
-      dest: `./images/${newName}`,         
-      extractFilename: false
-    }
-     
-    await download.image(imageOptions)
-      .catch((err) => console.error('image error', err));
+  const url = response[0].url;
+  const id = response[0].id;
 
-    await sharp(`./images/${newName}`)
-      .resize(320, 240)
-      .toFile(`./thumbnails/thumb_${newName}`, (err, info) => {
+  const suffix = url.substring(url.lastIndexOf('.'));
+  // make a unique file name.
+  // OH man, I should have put the date here too.
+  // ID has a dependency on the database, which has 
+  // holes all over it from playing with it too much.
+  const newName = `${id}${suffix}`; + suffix;
+  const sourceUrl = `./images/${newName}`
+  const imageOptions = {
+    url,
+    dest: sourceUrl,
+    extractFilename: false
+  }
+
+  await download.image(imageOptions)
+    .catch((err) => console.error('image download error', err));
+
+  const thumbnailUrl = `./thumbnails/thumb_${newName}`;
+
+  await sharpPromise(sourceUrl, thumbnailUrl)
+    .then(m => console.log('thumbnail success!!', m.size))
+    .catch((err) => {
+      // when this errors increment the offset value, default 0
+      // skip is a placeholder for a dynamic offset.
+      skip = true;
+      console.error('thumnail creation error', err);
+    });
+
+  const updateCon = await sqlConnectPromise(sqlConfig)
+    .catch(e => {
+      console.error('sqlConnectPromise rejected', e);
+    });
+
+  if (!updateCon) {
+    throw 'grabOriginalImage No MySQL connection';
+  }
+
+  await sqlQueryPromise(updateCon, sqlStatements.useDatabase)
+    .catch(e => {
+      console.error('sqlQueryPromise Write useDatabase rejected', e);
+    });
+
+  /*
+    TODO: update such that there's a notion of offset, if it's skipped, select the next one
+    that's null, and so forth.  With this, I have to go back and update thumbnailUrl back
+    to null
+  */
+  await sqlQueryPromise(updateCon, sqlStatements.updateThumbnail(id, skip ? '' : thumbnailUrl))
+    .catch(e => {
+      console.error('sqlQueryPromise Write useDatabase rejected', e);
+    });
+
+  updateCon.end();
+
+  return true;
+}
+
+async function sharpPromise(sourceUrl, destinationUrl) {
+  return new Promise((resolve, reject) => {
+    sharp(sourceUrl)
+      .resize({ height: 200 })
+      .toFile(destinationUrl, (err, info) => {
         if (err) {
-          console.error('Error with making thumbnail', err);
+          reject(err);
         } else {
-          console.log('thumnail success!', info);
+          resolve(info);
         }
       });
+  });
+}
 
-    console.log('after thumbnail is made????');
-
-    con.end();
-    // you have to con.end() at some point...
+async function grabThemAll() {
+  let errored = false;
+  let iteration = 0;
+  while (!errored && iteration < 10000) {
+    const result = await grabOriginalImage()
+      .catch(e => {
+        errored = true;
+        console.error('General Error', e);
+      });
+    if (!result) {
+      errored = true;
+    }
+    iteration++;
   }
 }
 
-grabOriginalImage()
-.catch(e => console.error('General Error', e));
+grabThemAll()
+  .then(m => console.log('Done', m))
+  .catch(e => console.error('Error', e));
