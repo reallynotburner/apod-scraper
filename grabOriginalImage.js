@@ -1,5 +1,7 @@
 require('dotenv').config();
 const download = require('image-downloader');
+const sharp = require('sharp');
+
 const sqlQueryPromise = require('./utils/sqlQueryPromise');
 const sqlConnectPromise = require('./utils/sqlConnectPromise');
 const sqlStatements = require('./utils/sqlStatements');
@@ -51,8 +53,19 @@ async function grabOriginalImage() {
     }
      
     await download.image(imageOptions)
-      .catch((err) => console.error('image error', err))
+      .catch((err) => console.error('image error', err));
 
+    await sharp(`./images/${newName}`)
+      .resize(320, 240)
+      .toFile(`./thumbnails/thumb_${newName}`, (err, info) => {
+        if (err) {
+          console.error('Error with making thumbnail', err);
+        } else {
+          console.log('thumnail success!', info);
+        }
+      });
+
+    console.log('after thumbnail is made????');
 
     con.end();
     // you have to con.end() at some point...
