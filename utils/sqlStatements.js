@@ -38,9 +38,13 @@ const insertNewApodRecord = function (con, record) {
     return noop;
   }
 }
+const checkForIsoDate = (isoDate) => (`SELECT DATE_FORMAT(date,\'%Y-%m-%d\') date from ${mySqlTableName} ` +
+  `WHERE date = '${isoDate}' ` + 
+  `ORDER by id DESC LIMIT 1; `);
 
 module.exports = {
   checkForDatabase,
+  checkForIsoDate,
   checkForTable,
   createTable,
   createDatabase,

@@ -47,17 +47,17 @@ async function scrapeApod(apiKey, offset = 1) {
   } else {
     // case where there is No items in table, choose the day before first day of data
     cursorYear = 1995;
-    cursorMonth = 6;
+    cursorMonth = 11;
     cursorDay = 15;
   }
 
 
   cursorDate.setFullYear(cursorYear);
-  cursorDate.setMonth(cursorMonth);
+  cursorDate.setMonth(cursorMonth - 1);
   cursorDate.setDate(cursorDay + offset);
 
   cursorYear = cursorDate.getFullYear();
-  cursorMonth = cursorDate.getMonth();
+  cursorMonth = cursorDate.getMonth() + 1;
   cursorDay = cursorDate.getDate();
 
   // TODO: learn date comparison / manipulation patters.
