@@ -47,7 +47,7 @@ async function scrapeApod(apiKey, offset = 1) {
   } else {
     // case where there is No items in table, choose the day before first day of data
     cursorYear = 1995;
-    cursorMonth = 11;
+    cursorMonth = 6;
     cursorDay = 15;
   }
 
