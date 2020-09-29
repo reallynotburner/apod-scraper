@@ -53,11 +53,11 @@ async function scrapeApod(apiKey, offset = 1) {
 
 
   cursorDate.setFullYear(cursorYear);
-  cursorDate.setMonth(cursorMonth);
+  cursorDate.setMonth(cursorMonth - 1);
   cursorDate.setDate(cursorDay + offset);
 
   cursorYear = cursorDate.getFullYear();
-  cursorMonth = cursorDate.getMonth();
+  cursorMonth = cursorDate.getMonth() + 1;
   cursorDay = cursorDate.getDate();
 
   // TODO: learn date comparison / manipulation patters.
