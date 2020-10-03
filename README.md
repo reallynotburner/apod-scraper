@@ -34,11 +34,22 @@ Use mysql CLI or MySql Workbench to start your database management system.
 npm start
 ```
 
+# Create Thumbnails
+Uses the database to see if there are any image records that don't have a thumbnail.  If a row entry lacks a thumbnail it downloads the regular resolution of the url to local filesystem to images folder.  Then it converts the image to a fixed height of 200px thumbnail in thumbnails folder.  Caveat: .gif output isn't supported by the conversion library.  Therefore, it exports .gif to .webp format.
+
+Since the APOD image servers aren't limited by the daily max of the API, this runs until it's scraped every image.
+
+Warning!  This initially downloads every regular resolution image from NASA APOD.  That's 2 GB of data as of 2020.  Daily scrapes there after are much smaller, just a single image of varying size.  Initial run time is about an hour on my machine and network conditions.
+```
+node utils/grabOriginalImage.js
+```
+
+
 # Suspend Conditions
 - when the rate limit of the api is reached the session remains open on a timeout and will try again in an hour
+- when the database has caught up with the API, so it will try again in 24 hours
 
 # Exit Condtions
-- there are more days to scrape
 - unable to connect with any database
 - unable to create a new database if missing.
 - unable to create a new table if missing.

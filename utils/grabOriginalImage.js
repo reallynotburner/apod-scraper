@@ -45,11 +45,8 @@ async function grabOriginalImage() {
   const { url, id, date } = response[0];
 
   const extension = url.substring(url.lastIndexOf('.'));
-  // make a unique file name.
-  // OH man, I should have put the date here too.
-  // ID has a dependency on the database, which has 
-  // holes all over it from playing with it too much.
   const newName = `image_${date}${extension}`;
+  const newGifName = `image_${date}.webp`;
   const sourceUrl = `./images/${newName}`
   const imageOptions = {
     url,
@@ -58,11 +55,18 @@ async function grabOriginalImage() {
   }
 
   await download.image(imageOptions)
-    .catch((err) => console.error('image download error', err));
+    .catch((err) => {
+      console.error('image download error', err);
+    })
 
-  const thumbnailUrl = `./thumbnails/thumbnail_${newName}`;
+  const isGif = extension === '.gif';
+  const thumbnailUrl = isGif ?
+    `./thumbnails/thumbnail_${newGifName}`
+    :
+    `./thumbnails/thumbnail_${newName}`;
 
-  await sharpPromise(sourceUrl, thumbnailUrl)
+
+  await sharpPromise(sourceUrl, thumbnailUrl, isGif)
     .then(m => console.log('thumbnail success!!', m.size))
     .catch((err) => {
       // when this errors increment the offset value, default 0
@@ -100,9 +104,10 @@ async function grabOriginalImage() {
   return true;
 }
 
-async function sharpPromise(sourceUrl, destinationUrl) {
+async function sharpPromise(sourceUrl, destinationUrl, isGif = false) {
+  const gifOptions = isGif ? { animated: true } : undefined;
   return new Promise((resolve, reject) => {
-    sharp(sourceUrl)
+    sharp(sourceUrl, gifOptions)
       .resize({ height: 200 })
       .toFile(destinationUrl, (err, info) => {
         if (err) {
@@ -130,6 +135,15 @@ async function grabThemAll() {
   }
 }
 
+async function grabOne() {
+  const result = await grabOriginalImage()
+    .then(r => console.log('grab one result', r))
+    .catch(e => {
+      console.error('General Error', e);
+    });
+  return result;
+}
+
 grabThemAll()
-  .then(m => console.log('Done', m))
-  .catch(e => console.error('Error', e));
+  .then(r => console.log('grab one result', r))
+  .catch(e => console.error('grab one error', e));
