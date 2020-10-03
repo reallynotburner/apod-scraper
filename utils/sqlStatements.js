@@ -21,7 +21,7 @@ const useDatabase = `USE ${mySqlDatabaseName}`
 const getLatestRecord = `SELECT DATE_FORMAT(date,\'%Y-%m-%d\') date from ${mySqlTableName} ORDER by id DESC LIMIT 1`;
 const noop = `SELECT * from ${mySqlTableName} WHERE false`;
 
-const insertNewApodRecord = function (con, record, table=`${mySqlTableName}`) {
+const insertNewApodRecord = function (con, record, table = mySqlTableName) {
   try {
     const sql = `INSERT INTO ${table} (date, title, media_type, url, hdurl, explanation, copyright) ` +
     `VALUES (` +
