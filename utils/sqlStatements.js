@@ -1,8 +1,7 @@
 const mySqlDatabaseName = process.env.MYSQL_DATABASE;
 const mySqlTableName = process.env.MYSQL_TABLE;
-const mySqlTableNameNext = process.env.MYSQL_TABLE_NEXT;
 
-const createTable = `CREATE TABLE IF NOT EXISTS ${mySqlTableName} (
+const createTable = (tableName = mySqlTableName) => (`CREATE TABLE IF NOT EXISTS ${mySqlTableName} (
   id SMALLINT NOT NULL AUTO_INCREMENT,
   date date,
   title varchar(128),
@@ -13,20 +12,7 @@ const createTable = `CREATE TABLE IF NOT EXISTS ${mySqlTableName} (
   copyright varchar(64),
   thumbnailUrl VARCHAR(255),
   PRIMARY KEY (id)
-);`
-
-const createNextTable = `CREATE TABLE IF NOT EXISTS ${mySqlTableNameNext} (
-  id SMALLINT NOT NULL AUTO_INCREMENT,
-  date date,
-  title varchar(128),
-  media_type varchar(64),
-  url varchar(255),
-  hdurl varchar(255),
-  explanation longtext CHARACTER SET utf8mb4,
-  copyright varchar(64),
-  thumbnailUrl VARCHAR(255),
-  PRIMARY KEY (id)
-);`
+);`);
 
 const checkForDatabase = `SHOW DATABASES LIKE '${mySqlDatabaseName}'`
 const createDatabase = `CREATE DATABASE IF NOT EXISTS ${mySqlDatabaseName}`
