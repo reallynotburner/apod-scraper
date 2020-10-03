@@ -76,7 +76,7 @@ async function scrapeApod(apiKey, offset = 1) {
     }, 60 * 60 * 24 * 1000);
   } else {
     try {
-      fetch("https://api.nasa.gov/planetary/apod?api_key=" +
+      await fetch("https://api.nasa.gov/planetary/apod?api_key=" +
         `${apiKey}&date=${cursorYear}-${cursorMonth}-${cursorDay}`)
         .then(checkRemainingRequests)
         .then(r => r.json())
@@ -109,10 +109,17 @@ async function scrapeApod(apiKey, offset = 1) {
             }, 4000000);
           }
         })
-        .catch(e => console.error('scrapeApod; error during update of database during promise chain'));
+        .catch(e => {
+          console.error('scrapeApod; error during update of database during promise chain.  Will try again in about an hour', e);
+          setTimeout(() => {
+            scrapeApod(apiKey, offset);
+          }, 4000000);
+        });
+
+      con && con.end();
     } catch (e) {
       console.error('scrapeApod; error during update of database');
-      con.end();
+      con && con.end();
     }
   }
 }
