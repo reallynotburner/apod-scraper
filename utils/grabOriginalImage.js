@@ -15,8 +15,15 @@ const sqlConfig = {
 };
 const apiKey = process.env.NASA_API_KEY;
 
+/*
+  TODO:  
+  This needs to get broken into separate functions.
+  It's not really reusable in this form.
+*/
 async function grabOriginalImage() {
   let skip = false;
+  
+  // Grab the most recent image record that doesn't have a thumbnail
   const con = await sqlConnectPromise(sqlConfig)
     .catch(e => {
       console.error('sqlConnectPromise rejected', e);
@@ -44,6 +51,7 @@ async function grabOriginalImage() {
 
   const { url, id, date } = response[0];
 
+  // Download the original url resource from NASA and name it by ISO date
   const extension = url.substring(url.lastIndexOf('.'));
   const newName = `image_${date}${extension}`;
   const newGifName = `image_${date}.webp`;
@@ -59,13 +67,14 @@ async function grabOriginalImage() {
       console.error('image download error', err);
     })
 
+  // come up with a name for the thumbnail file
   const isGif = extension === '.gif';
   const thumbnailUrl = isGif ?
     `./thumbnails/thumbnail_${newGifName}`
     :
     `./thumbnails/thumbnail_${newName}`;
 
-
+  // Convert original image into a thumbnail
   await sharpPromise(sourceUrl, thumbnailUrl, isGif)
     .then(m => console.log('thumbnail success!!', m.size))
     .catch((err) => {
@@ -75,6 +84,7 @@ async function grabOriginalImage() {
       console.error('thumnail creation error', err);
     });
 
+  // reconnect to the database to record the thumbnail location
   const updateCon = await sqlConnectPromise(sqlConfig)
     .catch(e => {
       console.error('sqlConnectPromise rejected', e);
@@ -89,11 +99,8 @@ async function grabOriginalImage() {
       console.error('sqlQueryPromise Write useDatabase rejected', e);
     });
 
-  /*
-    TODO: update such that there's a notion of offset, if it's skipped, select the next one
-    that's null, and so forth.  With this as-is, I have to go back and update thumbnailUrl back
-    to null with SQL statements.
-  */
+  // if errored give it the default thumbnail
+  // otherwise udpate the record with location of thumbnail
   await sqlQueryPromise(updateCon, sqlStatements.updateThumbnail(id, skip ? './thumbnails/thumbnail_image_default.jpg' : thumbnailUrl))
     .catch(e => {
       console.error('sqlQueryPromise Write useDatabase rejected', e);
@@ -121,17 +128,20 @@ async function sharpPromise(sourceUrl, destinationUrl, isGif = false) {
 
 async function grabThemAll() {
   let errored = false;
-  let iteration = 0;
-  while (!errored && iteration < 10000) {
+  let iteration = 10000; // some sort of limit on daily requests.
+  while (!errored && iteration > 0) {
     const result = await grabOriginalImage()
       .catch(e => {
         errored = true;
         console.error('General Error', e);
       });
     if (!result) {
+      console.error('No result grabbed, will try again in 4 hours');
       errored = true;
+      setTimeout(grabThemAll, 60 * 60 * 4 * 1000);
+      break;
     }
-    iteration++;
+    iteration--;
   }
 }
 
@@ -145,5 +155,4 @@ async function grabOne() {
 }
 
 grabThemAll()
-  .then(r => console.log('grab one result', r))
   .catch(e => console.error('grab one error', e));
