@@ -22,7 +22,7 @@ const apiKey = process.env.NASA_API_KEY;
 */
 async function grabOriginalImage() {
   let skip = false;
-  
+
   // Grab the most recent image record that doesn't have a thumbnail
   const con = await sqlConnectPromise(sqlConfig)
     .catch(e => {
@@ -38,7 +38,7 @@ async function grabOriginalImage() {
       console.error('sqlQueryPromise useDatabase rejected', e);
     });
 
-  const response = await sqlQueryPromise(con, sqlStatements.recentImageWithoutThumbnails)
+  const response = await sqlQueryPromise(con, sqlStatements.recentRecordWithoutThumbnails)
     .catch(e => {
       console.error('sqlQueryPromise useTable rejected', e);
     });
@@ -49,7 +49,12 @@ async function grabOriginalImage() {
     throw 'no queries returned!';
   }
 
-  const { url, id, date } = response[0];
+  const { url, id, date, media_type } = response[0];
+  const isImage = media_type === 'image';
+  const isVideo = media_type === 'video';
+  const isYoutube = isVideo && url && url.indexOf('youtube') > -1;
+  const isVimeo = isVideo && url && url.indexOf('vimeo') > -1;
+  const isUstream = isVideo && url && url.indexOf('ustream') > -1;
 
   // Download the original url resource from NASA and name it by ISO date
   const extension = url.substring(url.lastIndexOf('.'));
@@ -62,20 +67,25 @@ async function grabOriginalImage() {
     extractFilename: false
   }
 
-  await download.image(imageOptions)
+  isImage && await download.image(imageOptions)
     .catch((err) => {
       console.error('image download error', err);
     })
 
   // come up with a name for the thumbnail file
   const isGif = extension === '.gif';
-  const thumbnailUrl = isGif ?
-    `./thumbnails/thumbnail_${newGifName}`
+  const thumbnailName = isGif ?
+    `thumbnail_${newGifName}`
     :
-    `./thumbnails/thumbnail_${newName}`;
+    `thumbnail_${newName}`;
+
+  // where the app expects thumbnails to be
+  const storagePath = `../apod-app/public/thumbnails/${thumbnailName}`;
+  // where the app can access them
+  const appPath = `./thumbnails/${thumbnailName}`;
 
   // Convert original image into a thumbnail
-  await sharpPromise(sourceUrl, thumbnailUrl, isGif)
+  isImage && await sharpPromise(sourceUrl, storagePath, isGif)
     .then(m => console.log('thumbnail success!!', m.size))
     .catch((err) => {
       // when this errors increment the offset value, default 0
@@ -99,9 +109,24 @@ async function grabOriginalImage() {
       console.error('sqlQueryPromise Write useDatabase rejected', e);
     });
 
+  let path = '';
+  if (isImage) {
+    path = skip ? './thumbnails/thumbnail_image_default.jpg' : appPath
+  } else if (isYoutube) {
+    path = './thumbnails/thumbnail_image_youtube_default.jpg'
+  } else if (isVimeo) {
+    path = './thumbnails/thumbnail_image_vimeo_default.jpg'
+  } else if (isUstream) {
+    path = './thumbnails/thumbnail_image_ustream_default.jpg'
+  } else {
+    path = './thumbnails/thumbnail_image_default.jpg'
+  }
+
+  console.log('DERP', {path, isImage, skip, isYoutube, isVideo, isUstream});
+
   // if errored give it the default thumbnail
   // otherwise udpate the record with location of thumbnail
-  await sqlQueryPromise(updateCon, sqlStatements.updateThumbnail(id, skip ? './thumbnails/thumbnail_image_default.jpg' : thumbnailUrl))
+  await sqlQueryPromise(updateCon, sqlStatements.updateThumbnail(id, path))
     .catch(e => {
       console.error('sqlQueryPromise Write useDatabase rejected', e);
     });

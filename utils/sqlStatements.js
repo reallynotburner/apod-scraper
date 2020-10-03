@@ -43,10 +43,9 @@ const checkForIsoDate = (isoDate) => (`SELECT DATE_FORMAT(date,\'%Y-%m-%d\') dat
   `ORDER by id DESC LIMIT 1; `);
 
 
-const recentImageWithoutThumbnails = `SELECT id, url, DATE_FORMAT(date,\'%Y-%m-%d\') date ` +
+const recentRecordWithoutThumbnails = `SELECT id, url, DATE_FORMAT(date,\'%Y-%m-%d\') date, media_type ` +
   `FROM ApodApiRecords ` +
   `WHERE thumbnailUrl IS NULL ` +
-  `AND media_type = 'image' ` +
   `ORDER BY id DESC ` +
   `LIMIT 1;`
 
@@ -63,7 +62,7 @@ module.exports = {
   getLatestRecord,
   insertNewApodRecord,
   noop,
-  recentImageWithoutThumbnails,
+  recentRecordWithoutThumbnails,
   updateThumbnail,
   useDatabase,
 };
