@@ -8,8 +8,6 @@ const sqlStatements = require('./utils/sqlStatements');
 const mySqlEndpoint = process.env.MYSQL_ENDPOINT;
 const mySqlUser = process.env.MYSQL_USER;
 const mySqlPassword = process.env.MYSQL_PASSWORD;
-const mySqlDatabaseName = process.env.MYSQL_DATABASE;
-const mySqlTableName = process.env.MYSQL_TABLE;
 const sqlConfig = {
   host: mySqlEndpoint,
   user: mySqlUser,
@@ -118,9 +116,9 @@ async function scrapeApod(apiKey, offset = 1) {
 }
 
 scrapeApod(apiKey)
-.catch(e => {
-  console.error('scrapeApod; General Error will try again in four hours');
-  setTimeout(() => {
-    scrapeApod(apiKey, offset);
-  }, 60 * 60 * 4 * 1000);
-});
+  .catch(e => {
+    console.error('scrapeApod; General Error will try again in four hours');
+    setTimeout(() => {
+      scrapeApod(apiKey, offset);
+    }, 60 * 60 * 4 * 1000);
+  });

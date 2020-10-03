@@ -7,6 +7,7 @@ module.exports = async function createDbAndTableIfNecessary (con) {
     await sqlQueryPromise(con, sqlStatments.createDatabase);
     await sqlQueryPromise(con, sqlStatments.useDatabase);
     await sqlQueryPromise(con, sqlStatments.createTable);
+    await sqlQueryPromise(con, sqlStatments.createNextTable);
     
     return con;
   } catch (e) {

@@ -1,7 +1,21 @@
 const mySqlDatabaseName = process.env.MYSQL_DATABASE;
 const mySqlTableName = process.env.MYSQL_TABLE;
+const mySqlTableNameNext = process.env.MYSQL_TABLE_NEXT;
 
 const createTable = `CREATE TABLE IF NOT EXISTS ${mySqlTableName} (
+  id SMALLINT NOT NULL AUTO_INCREMENT,
+  date date,
+  title varchar(128),
+  media_type varchar(64),
+  url varchar(255),
+  hdurl varchar(255),
+  explanation longtext CHARACTER SET utf8mb4,
+  copyright varchar(64),
+  thumbnailUrl VARCHAR(255),
+  PRIMARY KEY (id)
+);`
+
+const createNextTable = `CREATE TABLE IF NOT EXISTS ${mySqlTableNameNext} (
   id SMALLINT NOT NULL AUTO_INCREMENT,
   date date,
   title varchar(128),
@@ -21,9 +35,9 @@ const useDatabase = `USE ${mySqlDatabaseName}`
 const getLatestRecord = `SELECT DATE_FORMAT(date,\'%Y-%m-%d\') date from ${mySqlTableName} ORDER by id DESC LIMIT 1`;
 const noop = `SELECT * from ${mySqlTableName} WHERE false`;
 
-const insertNewApodRecord = function (con, record) {
+const insertNewApodRecord = function (con, record, table=`${mySqlTableName}`) {
   try {
-    const sql = `INSERT INTO ${mySqlTableName} (date, title, media_type, url, hdurl, explanation, copyright) ` +
+    const sql = `INSERT INTO ${table} (date, title, media_type, url, hdurl, explanation, copyright) ` +
     `VALUES (` +
     `  ${con.escape(record.date)},` +
     `  ${con.escape(record.title && record.title)},` +
@@ -38,7 +52,9 @@ const insertNewApodRecord = function (con, record) {
     return noop;
   }
 }
-const checkForIsoDate = (isoDate) => (`SELECT DATE_FORMAT(date,\'%Y-%m-%d\') date from ${mySqlTableName} ` +
+
+
+const checkForIsoDate = (isoDate) => (`SELECT * from ${mySqlTableName} ` +
   `WHERE date = '${isoDate}' ` + 
   `ORDER by id DESC LIMIT 1; `);
 
@@ -47,6 +63,7 @@ module.exports = {
   checkForIsoDate,
   checkForTable,
   createTable,
+  createNextTable,
   createDatabase,
   getLatestRecord,
   insertNewApodRecord,
