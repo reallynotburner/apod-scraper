@@ -5,6 +5,7 @@ const sqlQueryPromise = require('./utils/sqlQueryPromise');
 const sqlConnectPromise = require('./utils/sqlConnectPromise');
 const checkRemainingRequests = require('./utils/checkRemainingRequests');
 const sqlStatements = require('./utils/sqlStatements');
+const grabOriginalImage = require('./utils/grabOriginalImage');
 const mySqlEndpoint = process.env.MYSQL_ENDPOINT;
 const mySqlUser = process.env.MYSQL_USER;
 const mySqlPassword = process.env.MYSQL_PASSWORD;
@@ -96,6 +97,11 @@ async function scrapeApod(apiKey, offset = 1) {
 
           offset = 1;
 
+          if (!errored) {
+            // OK, so you can't await in a promise chain.
+            // r.thumbnailUrl = await grabOriginalImage(r.media_type, r.url);
+          }
+        
           return sqlStatements.insertNewApodRecord(con, r);
         })
         .then(sql => sqlQueryPromise(con, sql))

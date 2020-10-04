@@ -20,38 +20,37 @@ const apiKey = process.env.NASA_API_KEY;
   This needs to get broken into separate functions.
   It's not really reusable in this form.
 */
-async function grabOriginalImage() {
+async function grabOriginalImage(mediaType, url) {
   let skip = false;
 
   // Grab the most recent image record that doesn't have a thumbnail
-  const con = await sqlConnectPromise(sqlConfig)
-    .catch(e => {
-      console.error('sqlConnectPromise rejected', e);
-    });
+  // const con = await sqlConnectPromise(sqlConfig)
+  //   .catch(e => {
+  //     console.error('sqlConnectPromise rejected', e);
+  //   });
 
-  if (!con) {
-    throw 'grabOriginalImage No MySQL connection';
-  }
+  // if (!con) {
+  //   throw 'grabOriginalImage No MySQL connection';
+  // }
 
-  await sqlQueryPromise(con, sqlStatements.useDatabase)
-    .catch(e => {
-      console.error('sqlQueryPromise useDatabase rejected', e);
-    });
+  // await sqlQueryPromise(con, sqlStatements.useDatabase)
+  //   .catch(e => {
+  //     console.error('sqlQueryPromise useDatabase rejected', e);
+  //   });
 
-  const response = await sqlQueryPromise(con, sqlStatements.recentRecordWithoutThumbnails)
-    .catch(e => {
-      console.error('sqlQueryPromise useTable rejected', e);
-    });
+  // const response = await sqlQueryPromise(con, sqlStatements.getRecordById(targetId))
+  //   .catch(e => {
+  //     console.error('sqlQueryPromise get target ID rejected', e);
+  //   });
 
-  con.end();
+  // con.end();
 
-  if (response.length < 1) {
-    throw 'no queries returned!';
-  }
+  // if (response.length < 1) {
+  //   throw 'no queries returned!';
+  // }
 
-  const { url, id, date, media_type } = response[0];
-  const isImage = media_type === 'image';
-  const isVideo = media_type === 'video';
+  const isImage = mediaType === 'image';
+  const isVideo = mediaType === 'video';
   const isYoutube = isVideo && url && url.indexOf('youtube') > -1;
   const isVimeo = isVideo && url && url.indexOf('vimeo') > -1;
   const isUstream = isVideo && url && url.indexOf('ustream') > -1;
@@ -95,19 +94,19 @@ async function grabOriginalImage() {
     });
 
   // reconnect to the database to record the thumbnail location
-  const updateCon = await sqlConnectPromise(sqlConfig)
-    .catch(e => {
-      console.error('sqlConnectPromise rejected', e);
-    });
+  // const updateCon = await sqlConnectPromise(sqlConfig)
+  //   .catch(e => {
+  //     console.error('sqlConnectPromise rejected', e);
+  //   });
 
-  if (!updateCon) {
-    throw 'grabOriginalImage No MySQL connection';
-  }
+  // if (!updateCon) {
+  //   throw 'grabOriginalImage No MySQL connection';
+  // }
 
-  await sqlQueryPromise(updateCon, sqlStatements.useDatabase)
-    .catch(e => {
-      console.error('sqlQueryPromise Write useDatabase rejected', e);
-    });
+  // await sqlQueryPromise(updateCon, sqlStatements.useDatabase)
+  //   .catch(e => {
+  //     console.error('sqlQueryPromise Write useDatabase rejected', e);
+  //   });
 
   let path = '';
   if (isImage) {
@@ -122,18 +121,16 @@ async function grabOriginalImage() {
     path = './thumbnails/thumbnail_image_default.jpg'
   }
 
-  console.log('DERP', {path, isImage, skip, isYoutube, isVideo, isUstream});
-
   // if errored give it the default thumbnail
   // otherwise udpate the record with location of thumbnail
-  await sqlQueryPromise(updateCon, sqlStatements.updateThumbnail(id, path))
-    .catch(e => {
-      console.error('sqlQueryPromise Write useDatabase rejected', e);
-    });
+  // await sqlQueryPromise(updateCon, sqlStatements.updateThumbnail(targetId, path))
+  //   .catch(e => {
+  //     console.error('sqlQueryPromise Write useDatabase rejected', e);
+  //   });
 
-  updateCon.end();
+  // updateCon.end();
 
-  return true;
+  return path;
 }
 
 async function sharpPromise(sourceUrl, destinationUrl, isGif = false) {
@@ -171,7 +168,7 @@ async function grabThemAll() {
 }
 
 async function grabOne() {
-  const result = await grabOriginalImage()
+  const result = await grabOriginalImage(9238)
     .then(r => console.log('grab one result', r))
     .catch(e => {
       console.error('General Error', e);
@@ -179,5 +176,5 @@ async function grabOne() {
   return result;
 }
 
-grabThemAll()
-  .catch(e => console.error('grab one error', e));
+
+module.exports = grabOriginalImage;
