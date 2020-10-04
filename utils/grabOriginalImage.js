@@ -20,7 +20,7 @@ const apiKey = process.env.NASA_API_KEY;
   This needs to get broken into separate functions.
   It's not really reusable in this form.
 */
-async function grabOriginalImage(mediaType, url) {
+async function grabOriginalImage(isoDate, mediaType, url) {
   let skip = false;
 
   // Grab the most recent image record that doesn't have a thumbnail
@@ -57,8 +57,8 @@ async function grabOriginalImage(mediaType, url) {
 
   // Download the original url resource from NASA and name it by ISO date
   const extension = url.substring(url.lastIndexOf('.'));
-  const newName = `image_${date}${extension}`;
-  const newGifName = `image_${date}.webp`;
+  const newName = `image_${isoDate}${extension}`;
+  const newGifName = `image_${isoDate}.webp`;
   const sourceUrl = `./images/${newName}`
   const imageOptions = {
     url,
