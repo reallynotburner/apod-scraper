@@ -1,6 +1,6 @@
 require('dotenv').config();
-const sqlQueryPromise = require('./utils/sqlQueryPromise');
-const sqlConnectPromise = require('./utils/sqlConnectPromise');
+const sqlQueryPromise = require('./sqlQueryPromise');
+const sqlConnectPromise = require('./sqlConnectPromise');
 const mySqlEndpoint = process.env.MYSQL_ENDPOINT;
 const mySqlUser = process.env.MYSQL_USER;
 const mySqlPassword = process.env.MYSQL_PASSWORD;
@@ -38,4 +38,4 @@ async function testConnection() {
   con && con.end();
 }
 
-testConnection();
+module.exports = testConnection;

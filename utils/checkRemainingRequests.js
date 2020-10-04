@@ -1,8 +1,9 @@
 module.exports = function checkRemainingRequests (request) {
-  const apiRequestsRemaining = parseInt(request.headers._headers['x-ratelimit-remaining'][0]);
-  console.log('requests remaining', apiRequestsRemaining);
-  if (apiRequestsRemaining < 1) {
-    throw 'NO MORE REQUESTS! Sorry';
+  let apiRequestsRemaining
+  try {
+    apiRequestsRemaining = parseInt(request.headers._headers['x-ratelimit-remaining'][0]);
+  } catch {
+    apiRequestsRemaining = null;
   }
-  return request;
+  return apiRequestsRemaining;
 }
