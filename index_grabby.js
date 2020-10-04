@@ -193,6 +193,25 @@ async function getMostRecentScrapedDate() {
   return cursorDate;
 }
 
+async function insertApiDataIntoTable (record) {
+  let errored = false;
+
+  const con = await sqlConnectPromise(sqlConfig).catch(e => {
+    errored = true;
+  });
+
+  await sqlQueryPromise(con, sqlStatements.useDatabase).catch(e => {
+    errored = true;
+  });
+
+  if (errored || !con) {
+    throw 'Bad MySQL Connection!';
+  }
+
+  const sql = sqlStatements.insertNewApodRecord(con, record);
+  await sqlQueryPromise(con, sql);
+  con && con.end();
+}
 
 async function scrape() {
   const stopDate = new Date();
@@ -209,6 +228,7 @@ async function scrape() {
     cursorTime = cursorDate.getTime();
     console.log('recent date is defined so ', cursorDate);
   } else if (recentDate === null) {
+    errored = true;
     console.log('recent date is null so unknown begin state', cursorDate);
   }
 
@@ -217,8 +237,6 @@ async function scrape() {
     cursorDate.setDate(cursorDate.getDate() + 1);
     cursorTime = cursorDate.getTime();
 
-
-    
     const apiResult = await getApodApiResonse(cursorDate);
     const {
       msg,
@@ -226,8 +244,11 @@ async function scrape() {
       apiHourlyRequestsRemaining
     } = apiResult;
 
-    if (!apiHourlyRequestsRemaining || apiHourlyRequestsRemaining < 1920) break;
-    if (msg || code) continue; // no useful data, next loop
+    if (!apiHourlyRequestsRemaining || apiHourlyRequestsRemaining < 10) break;
+    if (msg || code) continue;
+
+    // if we are here, we should have a good record to store.
+    await insertApiDataIntoTable(apiResult);
   }
 
   if (hourlyRateLimited) {
