@@ -22,40 +22,11 @@ const apiKey = process.env.NASA_API_KEY;
 */
 async function grabOriginalImage(isoDate, mediaType, url) {
   let skip = false;
-
-  // Grab the most recent image record that doesn't have a thumbnail
-  // const con = await sqlConnectPromise(sqlConfig)
-  //   .catch(e => {
-  //     console.error('sqlConnectPromise rejected', e);
-  //   });
-
-  // if (!con) {
-  //   throw 'grabOriginalImage No MySQL connection';
-  // }
-
-  // await sqlQueryPromise(con, sqlStatements.useDatabase)
-  //   .catch(e => {
-  //     console.error('sqlQueryPromise useDatabase rejected', e);
-  //   });
-
-  // const response = await sqlQueryPromise(con, sqlStatements.getRecordById(targetId))
-  //   .catch(e => {
-  //     console.error('sqlQueryPromise get target ID rejected', e);
-  //   });
-
-  // con.end();
-
-  // if (response.length < 1) {
-  //   throw 'no queries returned!';
-  // }
-
   const isImage = mediaType === 'image';
   const isVideo = mediaType === 'video';
   const isYoutube = isVideo && url && url.indexOf('youtube') > -1;
   const isVimeo = isVideo && url && url.indexOf('vimeo') > -1;
   const isUstream = isVideo && url && url.indexOf('ustream') > -1;
-
-  // Download the original url resource from NASA and name it by ISO date
   const extension = url.substring(url.lastIndexOf('.'));
   const newName = `image_${isoDate}${extension}`;
   const newGifName = `image_${isoDate}.webp`;
@@ -92,21 +63,6 @@ async function grabOriginalImage(isoDate, mediaType, url) {
       skip = true;
       console.error('thumnail creation error', err);
     });
-
-  // reconnect to the database to record the thumbnail location
-  // const updateCon = await sqlConnectPromise(sqlConfig)
-  //   .catch(e => {
-  //     console.error('sqlConnectPromise rejected', e);
-  //   });
-
-  // if (!updateCon) {
-  //   throw 'grabOriginalImage No MySQL connection';
-  // }
-
-  // await sqlQueryPromise(updateCon, sqlStatements.useDatabase)
-  //   .catch(e => {
-  //     console.error('sqlQueryPromise Write useDatabase rejected', e);
-  //   });
 
   let path = '';
   if (isImage) {
